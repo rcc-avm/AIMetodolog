@@ -1,0 +1,158 @@
+"""
+Конфигурация проекта aimetodolog.
+Все настройки централизованы здесь.
+"""
+
+import os
+import sys
+from google.colab import userdata
+
+# ============================================================================
+# 1. НАСТРОЙКИ API И ПОДКЛЮЧЕНИЙ
+# ============================================================================
+
+# Получаем API ключ OpenRouter
+try:
+    OPENROUTER_API_KEY = userdata.get("OPENROUTER_API_KEY")
+    if OPENROUTER_API_KEY:
+        print(f"✅ API ключ OpenRouter загружен из секретов Colab ({len(OPENROUTER_API_KEY)} символов)")
+except userdata.SecretNotFoundError:
+    # Если нет в секретах, проверяем переменные окружения
+    OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
+    if OPENROUTER_API_KEY:
+        print(f"✅ API ключ OpenRouter взят из переменных окружения")
+    else:
+        OPENROUTER_API_KEY = None
+        print("⚠️  API ключ OpenRouter не найден")
+
+# Модель по умолчанию
+#DEFAULT_MODEL = 'google/gemini-2.5-flash-lite'
+DEFAULT_MODEL = 'tngtech/deepseek-r1t2-chimera:free'
+
+# Альтернативные модели для тестирования
+AVAILABLE_MODELS = {
+    'gemini': 'google/gemini-2.5-flash-lite',
+    'deepseek-free': 'tngtech/deepseek-r1t2-chimera:free',
+    'llama': 'meta-llama/llama-3.3-70b-instruct:free',
+}
+
+# Настройки OpenRouter API
+OPENROUTER_CONFIG = {
+    'base_url': 'https://openrouter.ai/api/v1',
+    'timeout': 60.0,
+    'headers': {
+        'HTTP-Referer': 'http://localhost:3000',
+        'X-Title': 'AIMetodolog Colab'
+    }
+}
+
+# ============================================================================
+# 2. НАСТРОЙКИ ГЕНЕРАЦИИ
+# ============================================================================
+
+# Режимы генерации
+MODES = {
+    'full': 'Генерация занятия целиком',
+    'sections': 'По разделам 1 уровня',
+    'subsections': 'По подразделам'
+}
+
+# Режим по умолчанию
+DEFAULT_GENERATION_MODE = 'full'
+
+# Параметры генерации
+GENERATION_PARAMS = {
+    'temperature': 0.7,
+    'max_tokens': 4000,
+    'top_p': 0.9,
+}
+
+# ============================================================================
+# 3. НАСТРОЙКИ ПУТЕЙ И ФАЙЛОВ
+# ============================================================================
+
+# Базовые директории
+BASE_DIR = '/content'
+LOG_DIR = os.path.join(BASE_DIR, 'logs')
+OUTPUT_DIR = os.path.join(BASE_DIR, 'output')
+PROJECT_DIR = os.path.join(BASE_DIR, 'aimetodolog')
+PROJECT_ROOT = PROJECT_DIR
+PROJECT_NAME = 'aimetodolog'
+
+# Настройки версионирования
+DRIVE_BASE_PATH = '/content/drive/MyDrive/prog/aimetodolog'
+VERSION_PREFIX = 'aimetodolog_v'
+
+# ============================================================================
+# 4. НАСТРОЙКИ ФОРМАТИРОВАНИЯ
+# ============================================================================
+
+# Настройки текста
+TEXT_FORMATTING = {
+    'line_width': 120,
+    'encoding': 'utf-8'
+}
+
+# ============================================================================
+# 5. УТИЛИТНЫЕ ФУНКЦИИ КОНФИГУРАЦИИ
+# ============================================================================
+
+def setup_environment():
+    """Настраивает переменные окружения для корректной работы."""
+    # Кодировка
+    os.environ['PYTHONUTF8'] = '1'
+    os.environ['LANG'] = 'en_US.UTF-8'
+    os.environ['PYTHONIOENCODING'] = 'utf-8'
+    
+    # API ключ (КРИТИЧЕСКИ ВАЖНО)
+    if OPENROUTER_API_KEY:
+        os.environ['OPENROUTER_API_KEY'] = OPENROUTER_API_KEY
+        print(f"✅ API ключ установлен в окружение")
+    else:
+        print("❌ ВНИМАНИЕ: OPENROUTER_API_KEY не установлен!")
+        print("   Для работы проекта необходимо установить API ключ OpenRouter.")
+        print("   Способы установки:")
+        print("   1. Добавьте в 'Секреты' Colab с именем OPENROUTER_API_KEY")
+        print("   2. Используйте config.set_api_key('ваш_ключ')")
+        print("   3. Установите переменную окружения: os.environ['OPENROUTER_API_KEY'] = 'ваш_ключ'")
+    
+    # Создаем необходимые директории
+    for directory in [LOG_DIR, OUTPUT_DIR, PROJECT_DIR]:
+        os.makedirs(directory, exist_ok=True)
+    
+    return OPENROUTER_API_KEY is not None
+
+def set_api_key(api_key):
+    """Устанавливает API ключ вручную."""
+    global OPENROUTER_API_KEY
+    OPENROUTER_API_KEY = api_key
+    os.environ['OPENROUTER_API_KEY'] = api_key
+    print(f"✅ API ключ установлен вручную ({len(api_key)} символов)")
+
+def get_model_name(model_alias=None):
+    """Возвращает полное имя модели по алиасу."""
+    if model_alias is None:
+        return DEFAULT_MODEL
+    return AVAILABLE_MODELS.get(model_alias, DEFAULT_MODEL)
+
+def print_config_summary():
+    """Выводит сводку конфигурации."""
+    print("\n" + "=" * 60)
+    print("СВОДКА КОНФИГУРАЦИИ ПРОЕКТА")
+    print("=" * 60)
+    print(f"Название проекта: {PROJECT_NAME}")
+    print(f"Модель по умолчанию: {DEFAULT_MODEL}")
+    print(f"Режим генерации: {DEFAULT_GENERATION_MODE}")
+    print(f"API ключ: {'✅ Установлен' if OPENROUTER_API_KEY else '❌ НЕ УСТАНОВЛЕН'}")
+    print(f"Директория проекта: {PROJECT_DIR}")
+    print(f"Директория логов: {LOG_DIR}")
+    print(f"Директория вывода: {OUTPUT_DIR}")
+    print("=" * 60)
+
+# ============================================================================
+# 6. АВТОМАТИЧЕСКАЯ НАСТРОЙКА ПРИ ИМПОРТЕ
+# ============================================================================
+
+# Автоматически настраиваем окружение при импорте модуля
+print(f"\n🔧 Загрузка конфигурации {PROJECT_NAME}...")
+setup_environment()
