@@ -1,29 +1,36 @@
 """
 Конфигурация проекта aimetodolog.
 Все настройки централизованы здесь.
+Поддерживает Google Colab и локальное выполнение.
 """
 
 import os
 import sys
-from google.colab import userdata
+
+# Определяем, находимся ли мы в Google Colab
+IN_COLAB = 'COLAB_GPU' in os.environ
+
+from platform_utils import get_secret
 
 # ============================================================================
 # 1. НАСТРОЙКИ API И ПОДКЛЮЧЕНИЙ
 # ============================================================================
 
-# Получаем API ключ OpenRouter
-try:
-    OPENROUTER_API_KEY = userdata.get("OPENROUTER_API_KEY")
-    if OPENROUTER_API_KEY:
+# Получаем API ключ OpenRouter через платформенно-независимую функцию
+OPENROUTER_API_KEY = get_secret("OPENROUTER_API_KEY")
+
+if OPENROUTER_API_KEY:
+    if IN_COLAB:
         print(f"✅ API ключ OpenRouter загружен из секретов Colab ({len(OPENROUTER_API_KEY)} символов)")
-except userdata.SecretNotFoundError:
-    # Если нет в секретах, проверяем переменные окружения
-    OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
-    if OPENROUTER_API_KEY:
-        print(f"✅ API ключ OpenRouter взят из переменных окружения")
     else:
-        OPENROUTER_API_KEY = None
-        print("⚠️  API ключ OpenRouter не найден")
+        print(f"✅ API ключ OpenRouter взят из переменных окружения ({len(OPENROUTER_API_KEY)} символов)")
+else:
+    OPENROUTER_API_KEY = None
+    print("⚠️  API ключ OpenRouter не найден")
+    if IN_COLAB:
+        print("   Добавьте в 'Секреты' Colab с именем OPENROUTER_API_KEY")
+    else:
+        print("   Установите переменную окружения OPENROUTER_API_KEY")
 
 # Модель по умолчанию
 #DEFAULT_MODEL = 'google/gemini-2.5-flash-lite'
@@ -72,15 +79,24 @@ GENERATION_PARAMS = {
 # ============================================================================
 
 # Базовые директории
-BASE_DIR = '/content'
+if IN_COLAB:
+    BASE_DIR = '/content'
+else:
+    # Для локального выполнения используем текущую директорию
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 LOG_DIR = os.path.join(BASE_DIR, 'logs')
 OUTPUT_DIR = os.path.join(BASE_DIR, 'output')
 PROJECT_DIR = os.path.join(BASE_DIR, 'aimetodolog')
 PROJECT_ROOT = PROJECT_DIR
 PROJECT_NAME = 'aimetodolog'
 
-# Настройки версионирования
-DRIVE_BASE_PATH = '/content/drive/MyDrive/prog/aimetodolog'
+# Настройки версионирования (только для Colab)
+if IN_COLAB:
+    DRIVE_BASE_PATH = '/content/drive/MyDrive/prog/aimetodolog'
+else:
+    DRIVE_BASE_PATH = os.path.join(BASE_DIR, 'drive_backup')
+
 VERSION_PREFIX = 'aimetodolog_v'
 
 # ============================================================================
@@ -99,28 +115,10 @@ TEXT_FORMATTING = {
 
 def setup_environment():
     """Настраивает переменные окружения для корректной работы."""
-    # Кодировка
-    os.environ['PYTHONUTF8'] = '1'
-    os.environ['LANG'] = 'en_US.UTF-8'
-    os.environ['PYTHONIOENCODING'] = 'utf-8'
+    from platform_utils import setup_environment as platform_setup
     
-    # API ключ (КРИТИЧЕСКИ ВАЖНО)
-    if OPENROUTER_API_KEY:
-        os.environ['OPENROUTER_API_KEY'] = OPENROUTER_API_KEY
-        print(f"✅ API ключ установлен в окружение")
-    else:
-        print("❌ ВНИМАНИЕ: OPENROUTER_API_KEY не установлен!")
-        print("   Для работы проекта необходимо установить API ключ OpenRouter.")
-        print("   Способы установки:")
-        print("   1. Добавьте в 'Секреты' Colab с именем OPENROUTER_API_KEY")
-        print("   2. Используйте config.set_api_key('ваш_ключ')")
-        print("   3. Установите переменную окружения: os.environ['OPENROUTER_API_KEY'] = 'ваш_ключ'")
-    
-    # Создаем необходимые директории
-    for directory in [LOG_DIR, OUTPUT_DIR, PROJECT_DIR]:
-        os.makedirs(directory, exist_ok=True)
-    
-    return OPENROUTER_API_KEY is not None
+    # Используем платформенно-независимую настройку
+    return platform_setup()
 
 def set_api_key(api_key):
     """Устанавливает API ключ вручную."""
