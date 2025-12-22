@@ -18,6 +18,30 @@ from llm.output_processor import extract_and_repair_json
 from utils.structure_parser import parse_structure
 from utils.notebook_builder import build_and_save_notebook
 
+def extract_default_from_question(question: str) -> str:
+    """
+    Извлекает первое значение из списка в скобках как значение по умолчанию.
+    
+    Args:
+        question: строка вопроса вида "текст (вариант1, вариант2, ...)?"
+        
+    Returns:
+        str: первое значение из списка в скобках или пустая строка, если скобок нет
+    """
+    import re
+    
+    # Ищем текст в скобках
+    match = re.search(r'\((.*?)\)', question)
+    if not match:
+        return ""
+    
+    options_text = match.group(1)
+    # Разделяем по запятой, берем первый элемент, убираем пробелы
+    options = [opt.strip() for opt in options_text.split(',')]
+    if options:
+        return options[0]
+    return ""
+
 def dialog(questions: str) -> str:
     """
     Функция диалога (вопрос-ответ) и сохранение.
@@ -34,7 +58,20 @@ def dialog(questions: str) -> str:
     for i, question in enumerate(questions_list, 1):
         formatted_question = format_text(f"Вопрос {i}: {question}")
         print(formatted_question, '\n')
-        answer = input("Ваш ответ: ")
+        
+        # Получаем значение по умолчанию
+        default_answer = extract_default_from_question(question)
+        if default_answer:
+            prompt = f"Ваш ответ [{default_answer}]: "
+        else:
+            prompt = "Ваш ответ: "
+            
+        answer = input(prompt)
+        
+        # Если пользователь нажал Enter без ввода, используем значение по умолчанию
+        if not answer and default_answer:
+            answer = default_answer
+            
         formatted_answer = format_text(f"Ответ: {answer}")
         print()
         dialog_str += f"{formatted_question}\n\n{formatted_answer}\n\n"
@@ -57,9 +94,9 @@ def main_workflow():
     print_header("1. Ввод данных пользователя")
 
     initial_questions = """
-1. Какая у Вас будет основная тема занятия(Общая тема: Физика, тема занятия: Закон Архимеда)?
+1. Какая у Вас будет основная тема занятия(Общая тема: Физика; тема занятия: Закон Архимеда, )?
 2. Какой у Вас уровень подготовки? (начинающий, средний, продвинутый, начальный (5-7 класс), средний (8-9 класс), продвинутый (10-11 класс), университетский)?
-3. Какоя предполагается продолжительность занятия (15 минут, 45 минут, 1 час, 2 часа)?
+3. Какая предполагается продолжительность занятия (15 минут, 45 минут, 1 час, 2 часа)?
 4. Какими предварительными знаниями и навыками обладают обучаемые в данной теме (никакими, начальными, работаю в данной сфере, являюсь специалистом)?
 5. С какой целью хотите изучить занятие(урок в школе, занятие факультатива, лекция на курсе, для самостоятельного самообразования, для профессиональной подготовки, для совершенствования в профессии)?
 6. Укажите дополнительные пожелания к занятию: """
