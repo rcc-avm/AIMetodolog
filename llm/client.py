@@ -7,7 +7,7 @@ import time
 import json
 from datetime import datetime
 from openai import OpenAI
-from openai import APIConnectionError, APIError, RateLimitError, AuthenticationError
+from openai import APIConnectionError, APIError, RateLimitError, AuthenticationError, APIStatusError
 
 def log_to_file(content, prefix="log", log_dir=None):
     """
@@ -135,20 +135,18 @@ def get_llm_response(messages, model=None, temperature=0.7, max_tokens=4000):
             return demo_answer, execution_time, None
         
         # Проверяем API ключ (только для реального запроса)
-        api_key = os.environ.get("OPENROUTER_API_KEY")
+        api_key = config.OPENROUTER_API_KEY
         if not api_key:
-            raise AuthenticationError("API ключ OpenRouter не установлен в переменных окружения")
+            raise ValueError("API ключ OpenRouter не установлен. Проверьте файл .env или переменные окружения.")
         
-        # Инициализация клиента
-        client = OpenAI(
-            api_key=api_key,
-            base_url="https://openrouter.ai/api/v1",
-            timeout=60.0,
-            default_headers={
-                "HTTP-Referer": "http://localhost:3000",
-                "X-Title": "AIMetodist Colab"
-            }
-        )
+        # Инициализация клиента с конфигурацией из config.py
+        # Убираем параметр proxies, так как он не поддерживается в текущей версии openai
+        client_config = config.OPENROUTER_CONFIG.copy()
+        client_config['api_key'] = api_key
+        # Удаляем proxies, если он присутствует (вызывает ошибку в openai 1.12.0)
+        client_config.pop('proxies', None)
+        
+        client = OpenAI(**client_config)
         
         # Отправка запроса
         response = client.chat.completions.create(
@@ -173,6 +171,9 @@ def get_llm_response(messages, model=None, temperature=0.7, max_tokens=4000):
         
         return answer, execution_time, response
         
+    except ValueError as e:
+        error_msg = f"Ошибка конфигурации: {e}"
+        print(f"❌ {error_msg}")
     except AuthenticationError as e:
         error_msg = f"Ошибка аутентификации OpenRouter: {e}. Проверьте API ключ."
         print(f"❌ {error_msg}")
@@ -182,6 +183,13 @@ def get_llm_response(messages, model=None, temperature=0.7, max_tokens=4000):
     except APIConnectionError as e:
         error_msg = f"Ошибка соединения с OpenRouter: {e}"
         print(f"🔌 {error_msg}")
+    except APIStatusError as e:
+        # APIStatusError требует response и body, используем безопасное представление
+        try:
+            error_msg = f"Ошибка статуса API OpenRouter: {e.status_code if hasattr(e, 'status_code') else 'N/A'}"
+        except:
+            error_msg = "Ошибка статуса API OpenRouter"
+        print(f"⚠️  {error_msg}")
     except APIError as e:
         error_msg = f"Ошибка API OpenRouter: {e}"
         print(f"⚠️  {error_msg}")

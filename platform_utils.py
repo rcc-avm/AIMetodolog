@@ -81,11 +81,11 @@ def setup_environment():
     os.environ['LANG'] = 'en_US.UTF-8'
     os.environ['PYTHONIOENCODING'] = 'utf-8'
     
-    # Проверяем API ключ
+    # Проверяем API ключ (больше не устанавливаем в окружение, чтобы не раскрывать ключ)
     api_key = get_secret('OPENROUTER_API_KEY')
     if api_key:
-        os.environ['OPENROUTER_API_KEY'] = api_key
-        print(f"✅ API ключ установлен ({len(api_key)} символов)")
+        print(f"✅ API ключ OpenRouter доступен ({len(api_key)} символов)")
+        # Ключ уже загружен из .env или Colab секретов, не устанавливаем в окружение
     else:
         print("⚠️  API ключ OpenRouter не найден")
         print("   Установите переменную окружения OPENROUTER_API_KEY")

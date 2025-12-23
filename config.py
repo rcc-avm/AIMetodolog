@@ -6,9 +6,22 @@
 
 import os
 import sys
+from pathlib import Path
 
 # Определяем, находимся ли мы в Google Colab
 IN_COLAB = 'COLAB_GPU' in os.environ
+
+# Загружаем переменные из .env файла, если он существует
+try:
+    from dotenv import load_dotenv
+    env_path = Path(__file__).parent / '.env'
+    if env_path.exists():
+        load_dotenv(env_path)
+        print(f"✅ Загружены переменные из .env файла")
+    else:
+        print(f"⚠️  Файл .env не найден по пути: {env_path}")
+except ImportError:
+    print("⚠️  python-dotenv не установлен, переменные .env не загружены")
 
 from platform_utils import get_secret
 
@@ -34,6 +47,7 @@ else:
 
 # Модель по умолчанию
 #DEFAULT_MODEL = 'google/gemini-2.5-flash-lite'
+#DEFAULT_MODEL = 'meta-llama/llama-3.3-70b-instruct:free'
 DEFAULT_MODEL = 'tngtech/deepseek-r1t2-chimera:free'
 
 # Альтернативные модели для тестирования
@@ -47,7 +61,7 @@ AVAILABLE_MODELS = {
 OPENROUTER_CONFIG = {
     'base_url': 'https://openrouter.ai/api/v1',
     'timeout': 60.0,
-    'headers': {
+    'default_headers': {
         'HTTP-Referer': 'http://localhost:3000',
         'X-Title': 'AIMetodolog Colab'
     }
@@ -157,11 +171,11 @@ def print_config_summary():
 # Локальное тестирование без подключения к LLM
 DEMO_LOCAL = False  # TRUE/FALSE (вместо ответа LLM выводится заранее приготовленный шаблон)
 
-# Локальное тестирование без подключения к большой модели LLM в интернете
+# Локальное тежим для локальной русифицированной контурной модели LLM
 DEMO_LOCAL_LLM = False  # TRUE/FALSE (запрос к локальной русифицированной контурной модели LLM)
 
 # Локальное тестирование с подключением к большой модели LLM, но с запросом-заглушкой
-DEMO_BIG_LLM = False  # TRUE/FALSE (подставляется тестовый запрос)
+DEMO_BIG_LLM = False  # TRUE/FALSE (подставляется тестовый запрос для экономии трафика)
 
 # Локальное тестирование с реальным подключением к большой модели LLM с логированием
 DEMO_BIG_LLM_REAL = False  # TRUE/FALSE (реальный запрос с логированием сырых данных)
